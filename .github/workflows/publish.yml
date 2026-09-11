@@ -25,7 +25,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write        # cut releases; nothing else
+  contents: write        # cut releases, and commit the heartbeat below
 
 jobs:
   publish:
@@ -47,6 +47,40 @@ jobs:
           else
             node publish.js
           fi
+
+      # Keep the schedule alive.
+      #
+      # GitHub disables a scheduled workflow after 60 days without repository
+      # activity. This repository exists only to run this cron, so it receives
+      # no commits and would silently stop in two months — no error, no email,
+      # the schedule simply stops and every customer's database quietly goes
+      # stale. Writing the published date back into the README is activity,
+      # and it doubles as a heartbeat anyone can read: if that line stops
+      # advancing, this pipeline has stopped.
+      - name: Record the publish in the README
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          set -e
+          DATE="$(node -pe 'JSON.parse(require("fs").readFileSync("resources/advisories/latest.json","utf8")).date')"
+          node -e '
+            const fs = require("fs");
+            const date = process.argv[1];
+            const line = `<!--published-->Last published: **${date}** &middot; [latest release](https://github.com/${process.env.GITHUB_REPOSITORY}/releases/latest)<!--/published-->`;
+            let md = fs.readFileSync("README.md", "utf8");
+            md = /<!--published-->[\s\S]*?<!--\/published-->/.test(md)
+              ? md.replace(/<!--published-->[\s\S]*?<!--\/published-->/, line)
+              : md.replace(/\n## /, `\n${line}\n\n## `);
+            fs.writeFileSync("README.md", md);
+          ' "$DATE"
+          if git diff --quiet README.md; then
+            echo "README already records $DATE — nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "Published advisory database ${DATE}"
+          git push
 
       # publish.js already refuses an index that shrank and checks the live
       # manifest itself. This repeats the count check from outside the script
