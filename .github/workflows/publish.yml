@@ -1,0 +1,74 @@
+# Rebuild the offline CVE database from OSV and publish it as a dated release.
+#
+# No credentials. GITHUB_TOKEN is issued for the run and scoped to this
+# repository, so there is nothing here that could leak and be used against
+# anything else — which is the reason this lives in its own public repository
+# rather than in the product repository behind a cloud service-account key.
+
+name: Publish advisory database
+
+on:
+  schedule:
+    # 02:00 UTC — 07:30 IST. OSV's daily exports have settled by then.
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Rebuild and hash, but publish nothing'
+        type: boolean
+        default: false
+
+concurrency:
+  # Never cancel a publish in flight: a release with half its assets uploaded
+  # is worse than a late one.
+  group: publish-advisories
+  cancel-in-progress: false
+
+permissions:
+  contents: write        # cut releases; nothing else
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45  # OSV's npm export alone is 222MB before compaction
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Rebuild from OSV and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            node publish.js --dry-run
+          else
+            node publish.js
+          fi
+
+      # publish.js already refuses an index that shrank and checks the live
+      # manifest itself. This repeats the count check from outside the script
+      # that wrote it, because the failure being guarded against is silent: a
+      # smaller index removes advisories and makes everyone's next report
+      # come back clean.
+      - name: Independently verify what is live
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          set -e
+          curl -fsSL "https://github.com/${{ github.repository }}/releases/latest/download/latest.json" -o live.json
+          node -e '
+            const j = JSON.parse(require("fs").readFileSync("live.json", "utf8"));
+            const floors = { npm: 150000, pypi: 9000, packagist: 900 };
+            let bad = 0;
+            for (const [eco, floor] of Object.entries(floors)) {
+              const f = j.files[eco];
+              if (!f) { console.error("live manifest is missing " + eco); bad++; continue; }
+              const ok = f.packages >= floor;
+              console.log(eco.padEnd(10) + String(f.packages).padStart(8) + "  " + (ok ? "ok" : "BELOW FLOOR"));
+              if (!ok) bad++;
+            }
+            console.log("date: " + j.date);
+            if (bad) process.exit(1);
+          '
