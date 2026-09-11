@@ -1,6 +1,6 @@
 # Nadhi Audit — offline CVE database
 
-The advisory database [Nadhi Audit](https://nadhi.app) matches dependencies
+The advisory database [Nadhi Audit](https://convaiinnovations.com) matches dependencies
 against, published daily as a dated release.
 
 ## Why this repository is public and separate
