@@ -3,6 +3,8 @@
 The advisory database [Nadhi Audit](https://convaiinnovations.com) matches dependencies
 against, published daily as a dated release.
 
+<!--published-->Last published: **2026-09-12** &middot; [latest release](https://github.com/NandhaKishorM/nadhi-advisories/releases/latest)<!--/published-->
+
 ## Why this repository is public and separate
 
 Nadhi Audit is an offline code auditor: it runs on the developer's machine and
