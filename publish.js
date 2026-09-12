@@ -58,7 +58,11 @@ function main() {
     console.log('[1/3] skipping the OSV rebuild');
   } else {
     console.log('[1/3] rebuilding indexes from OSV…');
-    sh(process.execPath, [path.join(__dirname, 'build-advisory-index.js'), ...ECOS.map(e => OSV_NAMES[e])]);
+    // Name the output directory explicitly. The builder's default is relative
+    // to its own location, which is right in the desktop repository and wrong
+    // here.
+    sh(process.execPath, [path.join(__dirname, 'build-advisory-index.js'), ...ECOS.map(e => OSV_NAMES[e])],
+       { env: { ...process.env, ADVISORY_OUT_DIR: SRC } });
   }
 
   const date = new Date().toISOString().slice(0, 10);

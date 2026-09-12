@@ -26,7 +26,20 @@ const https = require('https');
 const { execFileSync } = require('child_process');
 const os = require('os');
 
-const OUT = path.join(__dirname, '..', 'resources', 'advisories');
+// Where the compacted indexes land.
+//
+// This was `__dirname/../resources/advisories`, which is correct in the
+// desktop repository because the script lives in scripts/ there — one level
+// down. Copied to the root of THIS repository, `..` resolved to the parent of
+// the checkout, so the rebuild wrote its output outside the repo and publish.js
+// then failed with "npm.json was not produced". The failure was invisible for a
+// day because every run so far used --skip-build against files that had been
+// copied in by hand.
+//
+// A path relative to a script is a path that breaks when the script moves. The
+// caller names the directory now, and the old behaviour is the fallback so the
+// desktop copy is unaffected.
+const OUT = process.env.ADVISORY_OUT_DIR || path.join(__dirname, '..', 'resources', 'advisories');
 
 function download(url, dest) {
   return new Promise((resolve, reject) => {
