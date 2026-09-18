@@ -3,7 +3,7 @@
 The advisory database [Nadhi Audit](https://convaiinnovations.com) matches dependencies
 against, published daily as a dated release.
 
-<!--published-->Last published: **2026-09-17** &middot; [latest release](https://github.com/NandhaKishorM/nadhi-advisories/releases/latest)<!--/published-->
+<!--published-->Last published: **2026-09-18** &middot; [latest release](https://github.com/NandhaKishorM/nadhi-advisories/releases/latest)<!--/published-->
 
 ## Why this repository is public and separate
 
